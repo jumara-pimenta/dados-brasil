@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dados Brasil – Inteligência e Consulta Empresarial</title>
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Ir para o conteúdo</a>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <img class="logo" src="assets/logo.png" width="88" height="88" alt="Logo do projeto Mulheres &amp; Inovação">
+      <div>
+        <h1>Dados Brasil</h1>
+        <p>Inteligência e Consulta Empresarial</p>
+        <span class="project">Projeto Mulheres &amp; Inovação</span>
+      </div>
+    </div>
+    <div class="source">
+      <span>Fonte dos dados: <a href="https://dadosbrasil.net/pt/" target="_blank" rel="noopener">API Dados Brasil</a></span>
+      <small>Data de atualização da base: não informada pela API</small>
+    </div>
+  </div>
+  <div class="accent" aria-hidden="true"></div>
+</header>
+
+<main id="main">
+  <form id="filters" class="panel" autocomplete="off" novalidate>
+    <div class="search-row">
+      <div class="field search">
+        <label for="q">Pesquisa principal</label>
+        <input id="q" type="search" placeholder="Razão social, nome fantasia ou CNPJ" aria-describedby="qHint">
+        <small id="qHint" class="hint">Buscas por nome são mais rápidas quando combinadas com um Estado (UF).</small>
+      </div>
+      <div class="btns">
+        <button type="submit" id="submit" class="btn primary">Pesquisar</button>
+        <button type="button" id="clear" class="btn">Limpar filtros</button>
+      </div>
+    </div>
+
+    <div class="groups">
+      <fieldset class="group">
+        <legend>Localização</legend>
+        <div class="grid">
+          <div class="field">
+            <label for="region">Região</label>
+            <select id="region"><option value="">Todas</option></select>
+          </div>
+          <div class="field">
+            <label for="uf">Estado (UF)</label>
+            <select id="uf"><option value="">Todos</option></select>
+          </div>
+          <div class="field">
+            <label for="city">Município</label>
+            <div class="combo">
+              <input id="city" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false"
+                     aria-controls="cityListbox" placeholder="Digite o nome e escolha">
+              <button type="button" class="combo-clear" id="cityClear" aria-label="Limpar município" hidden>×</button>
+              <ul id="cityListbox" class="listbox" role="listbox" aria-label="Sugestões de município" hidden></ul>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Características empresariais</legend>
+        <div class="grid">
+          <div class="field">
+            <label for="status">Situação cadastral</label>
+            <select id="status">
+              <option value="">Todas</option>
+              <option value="ATIVA">Ativa</option>
+              <option value="SUSPENSA">Suspensa</option>
+              <option value="INAPTA">Inapta</option>
+              <option value="BAIXADA">Baixada</option>
+              <option value="NULA">Nula</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="size">Porte da empresa</label>
+            <select id="size" aria-describedby="sizeHint">
+              <option value="">Todos</option>
+              <option value="1">Microempresa</option>
+              <option value="3">Empresa de pequeno porte</option>
+              <option value="5">Demais</option>
+              <option value="0">Não informado</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="nature">Natureza jurídica</label>
+            <div class="combo">
+              <input id="nature" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false"
+                     aria-controls="natureListbox" placeholder="Clique para ver a lista ou digite">
+              <button type="button" class="combo-clear" id="natureClear" aria-label="Limpar natureza jurídica" hidden>×</button>
+              <ul id="natureListbox" class="listbox" role="listbox" aria-label="Sugestões de natureza jurídica" hidden></ul>
+            </div>
+          </div>
+          <div class="field">
+            <label for="cnae">Atividade econômica (CNAE)</label>
+            <div class="combo">
+              <input id="cnae" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false"
+                     aria-controls="cnaeListbox" placeholder="Digite o código ou a descrição">
+              <button type="button" class="combo-clear" id="cnaeClear" aria-label="Limpar atividade econômica" hidden>×</button>
+              <ul id="cnaeListbox" class="listbox" role="listbox" aria-label="Sugestões de atividade econômica" hidden></ul>
+            </div>
+          </div>
+        </div>
+        <p id="sizeInfo" class="size-info" role="status" aria-live="polite" hidden></p>
+        <small id="sizeHint" class="hint">A API não filtra por porte: esse filtro é aplicado no navegador sobre os resultados, e por isso exige outro filtro além dele.</small>
+      </fieldset>
+    </div>
+
+    <p id="formError" class="form-error" role="alert" hidden></p>
+  </form>
+
+  <nav class="tabs" role="tablist" aria-label="Visões">
+    <button role="tab" id="tabResults" aria-controls="panelResults" aria-selected="true" class="tab">Resultados</button>
+    <button role="tab" id="tabStats" aria-controls="panelStats" aria-selected="false" tabindex="-1" class="tab">Indicadores</button>
+  </nav>
+
+  <section id="panelResults" role="tabpanel" aria-labelledby="tabResults">
+    <div id="scope" class="scope" hidden></div>
+
+    <div class="panel results">
+      <div class="toolbar">
+        <div id="count" class="count" role="status" aria-live="polite">Defina os filtros e clique em Pesquisar.</div>
+        <div class="tb-actions">
+          <button type="button" id="exportBtn" class="btn small" hidden title="Baixa os resultados da pesquisa em CSV (até 2.000 linhas), com telefone e e-mail">⬇ Exportar CSV</button>
+          <button type="button" id="countBtn" class="btn small" hidden title="A API não informa totais; o app conta percorrendo as páginas, até 2.000 resultados">Contar total</button>
+          <button type="button" id="refresh" class="btn small" hidden>Atualizar pesquisa</button>
+        </div>
+      </div>
+
+      <div id="notice" class="notice" hidden></div>
+
+      <div id="stateBox" class="statebox" hidden></div>
+
+      <div class="tablewrap" id="tableWrap" hidden>
+        <table>
+          <caption class="sr">Empresas encontradas</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="c-name">Razão social</th>
+              <th scope="col" class="c-trade">Nome fantasia</th>
+              <th scope="col" class="c-cnpj">CNPJ</th>
+              <th scope="col" class="c-type">Tipo</th>
+              <th scope="col" class="c-size">Porte</th>
+              <th scope="col" class="c-status">Situação</th>
+              <th scope="col" class="c-city">Município/UF</th>
+              <th scope="col" class="c-capital">Capital social</th>
+              <th scope="col" class="c-contact">Contato</th>
+              <th scope="col" class="c-act"><span class="sr">Ações</span></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <div class="pager" id="pager" hidden>
+        <button type="button" class="btn small" id="prev">← Anterior</button>
+        <span id="pageInfo" role="status" aria-live="polite"></span>
+        <button type="button" class="btn small" id="next">Próxima →</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="panelStats" role="tabpanel" aria-labelledby="tabStats" hidden>
+    <div id="stats" class="panel"></div>
+  </section>
+</main>
+
+<footer class="foot">
+  <strong>Construído para fins de pesquisa acadêmica</strong> · Projeto Mulheres &amp; Inovação<br>
+  Fonte dos Dados: <a href="https://dadosbrasil.net/pt/" target="_blank" rel="noopener">Dados Brasil</a>.
+</footer>
+
+<dialog id="detail" aria-labelledby="detailTitle">
+  <button type="button" class="close" id="closeDetail" aria-label="Fechar detalhes">×</button>
+  <div id="detailHead"></div>
+  <div class="tabs inner" role="tablist" id="detailTabs" aria-label="Seções do detalhe"></div>
+  <div id="detailBody" tabindex="-1"></div>
+</dialog>
+
+<script src="js/config.js"></script>
+<script src="js/format.js"></script>
+<script src="js/api.js"></script>
+<script src="js/export.js"></script>
+<script src="js/filters.js"></script>
+<script src="js/render.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
