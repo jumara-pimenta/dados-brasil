@@ -18,8 +18,8 @@
     ['Situação cadastral', r => F.statusLabel(r.status)],
     ['Município', r => r.city?.name || api.cityName(r.city?.id)],
     ['UF', r => r.state?.uf],
-    ['Telefones', r => (r.contact?.phones || []).map(F.phone).join(' / ')],
-    ['E-mail', r => r.contact?.email],
+    ['Telefones', r => F.validPhones(r.contact?.phones).map(F.phone).join(' / ')],
+    ['E-mail', r => F.validEmail(r.contact?.email)],
     ['Capital social (R$)', r => money(r.company?.shareCapital)],
     ['CNAE principal', r => (r.primaryActivity ? `${r.primaryActivity.id} - ${r.primaryActivity.description}` : '')],
   ];

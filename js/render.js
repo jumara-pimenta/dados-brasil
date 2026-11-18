@@ -25,8 +25,8 @@
 
   // ---------- Tabela ----------
   function row(r) {
-    const phone = F.phone(r.contact?.phones?.[0]);
-    const email = r.contact?.email;
+    const phone = F.phone(F.validPhones(r.contact?.phones)[0]);
+    const email = F.validEmail(r.contact?.email);
     const place = cityUf(r);
     const name = r.company?.legalName || '';
     return `<tr data-cnpj="${esc(r.cnpj)}">
@@ -103,7 +103,8 @@
         ['Cidade no exterior', e.address?.foreignCity],
       ])) +
       section('Contato', dl([
-        ['Telefone', (e.contact?.phones || []).map(F.phone).join(' · ')], ['Fax', e.contact?.fax], ['E-mail', e.contact?.email],
+        ['Telefone', F.validPhones(e.contact?.phones).map(F.phone).join(' · ')],
+        ['Fax', F.validPhones([e.contact?.fax]).map(F.phone)[0]], ['E-mail', F.validEmail(e.contact?.email)],
       ]));
 
     const sec = e.secondaryActivities || [];

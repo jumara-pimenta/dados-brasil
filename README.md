@@ -20,16 +20,18 @@ python -m http.server 8000   # ou: npx serve
 ## Funcionalidades
 
 - Pesquisa por razão social, nome fantasia ou CNPJ (com máscara automática).
-- Filtros combináveis: região (auxiliar dos estados), UF, município, situação cadastral, porte, natureza jurídica e atividade econômica (CNAE).
+- Filtros combináveis: regiões e estados (seleção **múltipla** por checkboxes; marcar uma região marca todos os seus estados), município, situação cadastral e porte (também com seleção múltipla), natureza jurídica e atividade econômica (CNAE).
 - Município, CNAE e natureza jurídica com sugestões (busca por código ou descrição, sem diferenciar acentos, com navegação por teclado).
 - Tabela com razão social, nome fantasia, CNPJ, tipo, porte, situação, município/UF, capital social e contato (telefone e e-mail).
 - Paginação por cursor, botão **Contar total** (até 2.000 resultados) e **Exportar CSV** (até 2.000 linhas, pronto para o Excel em português).
+- Filtro **Contato** (após a busca): mostra só empresas com e-mail e/ou telefone válidos (ignora o telefone de zeros que a base usa quando não há número). Vale também para a contagem e o CSV.
 - Detalhe da empresa em abas: geral, atividade econômica, estabelecimentos e quadro societário.
 - Aba **Indicadores** com distribuições dos resultados carregados.
 
 ## Limitações da API (confirmadas por introspecção do schema GraphQL)
 
-- Não há filtro por **porte** nem por **região**: o porte é filtrado no navegador e a região só restringe a lista de estados.
+- Não há filtro por **contato** nem por **porte** (ambos são aplicados no navegador, varrendo até 5 lotes de 100 por página), nem por **região** nem por **vários estados** de uma vez (o filtro `uf` aceita um único valor): o porte é filtrado no navegador, e a seleção de regiões/estados é feita consultando um estado por vez, em sequência, e juntando os resultados.
+- O filtro de **situação** aceita um valor por consulta (ativa, suspensa, inapta ou baixada; não aceita "nula"). Com várias situações e/ou estados, o app faz uma consulta por combinação (máximo de 40).
 - Não há **total de resultados** nem **data de atualização** da base (a base é importada mensalmente dos dados abertos do CNPJ da Receita Federal).
 - Buscas por nome muito comuns, ou algumas combinações de filtros, podem estourar o limite de ~10 s do servidor.
 - Os indicadores descrevem apenas a página carregada, nunca totais nacionais.

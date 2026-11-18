@@ -126,13 +126,21 @@
   }
 
   // Página enxuta, só para contagem (a API não fornece totais). Traz o porte apenas se necessário.
-  async function scanPage(filter, { cursor = null, withSize = false, signal } = {}) {
+  async function scanPage(filter, { cursor = null, withSize = false, withContact = false, signal } = {}) {
+    const extra = (withSize ? ' company { size { code } }' : '') + (withContact ? ' contact { email phones }' : '');
     const d = await gql(
       `query($f:EstablishmentFilter!,$n:Int,$a:String){ establishments(filter:$f, first:$n, after:$a){
-         pageInfo { hasNextPage endCursor } edges { node { cnpj${withSize ? ' company { size { code } }' : ''} } } } }`,
+         pageInfo { hasNextPage endCursor } edges { node { cnpj${extra} } } } }`,
       { f: filter, n: config.API_MAX_PAGE, a: cursor }, { signal });
     const c = d.establishments;
     return { rows: c.edges.map(e => e.node), hasNext: c.pageInfo.hasNextPage, endCursor: c.pageInfo.endCursor };
+  }
+
+  // A API aceita uma UF por consulta. Para várias UFs, `filters` traz um filtro por UF e a
+  // posição { i, cursor } indica em qual UF e cursor estamos; devolve a posição seguinte (ou null).
+  function nextPos(filters, pos, r) {
+    if (r.hasNext) return { i: pos.i, cursor: r.endCursor };
+    return pos.i + 1 < filters.length ? { i: pos.i + 1, cursor: null } : null;
   }
 
   const ESTAB_MINI = 'cnpj isHeadOffice tradeName status city { id name } state { uf }';
@@ -164,5 +172,5 @@
   }
 
   DB.api = { ApiError, friendly, gql, loadReferences, searchCities, resolveCityNames, cityName,
-             searchEstablishments, scanPage, getEstablishment, getCompanyEstablishments };
+             searchEstablishments, scanPage, nextPos, getEstablishment, getCompanyEstablishments };
 })();

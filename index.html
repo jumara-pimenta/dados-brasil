@@ -32,27 +32,43 @@
   <form id="filters" class="panel" autocomplete="off" novalidate>
     <div class="search-row">
       <div class="field search">
-        <label for="q">Pesquisa principal</label>
-        <input id="q" type="search" placeholder="Razão social, nome fantasia ou CNPJ" aria-describedby="qHint">
-        <small id="qHint" class="hint">Buscas por nome são mais rápidas quando combinadas com um Estado (UF).</small>
-      </div>
-      <div class="btns">
-        <button type="submit" id="submit" class="btn primary">Pesquisar</button>
-        <button type="button" id="clear" class="btn">Limpar filtros</button>
+        <label for="q">Nome ou CNPJ</label>
+        <input id="q" type="search" placeholder="Opcional: razão social, nome fantasia ou CNPJ" aria-describedby="qHint">
+        <small id="qHint" class="hint"><strong>Não é obrigatório:</strong> você pode pesquisar só com os filtros abaixo. Buscas por nome são mais rápidas quando combinadas com um Estado (UF).</small>
       </div>
     </div>
+
+    <div class="or-divider" aria-hidden="true"><span>e/ou use os filtros</span></div>
 
     <div class="groups">
       <fieldset class="group">
         <legend>Localização</legend>
         <div class="grid">
           <div class="field">
-            <label for="region">Região</label>
-            <select id="region"><option value="">Todas</option></select>
+            <label id="regionLabel" for="region">Regiões</label>
+            <div class="multi" id="regionMulti">
+              <button type="button" id="region" class="multi-btn" aria-haspopup="true" aria-expanded="false" aria-controls="regionPanel">Todas</button>
+              <div id="regionPanel" class="multi-panel narrow" role="group" aria-labelledby="regionLabel" hidden>
+                <div class="multi-tools">
+                  <button type="button" class="btn small" id="regionAll">Selecionar todas</button>
+                  <button type="button" class="btn small" id="regionNone">Limpar</button>
+                </div>
+                <div id="regionList"></div>
+              </div>
+            </div>
           </div>
           <div class="field">
-            <label for="uf">Estado (UF)</label>
-            <select id="uf"><option value="">Todos</option></select>
+            <label id="ufLabel" for="uf">Estados (UF)</label>
+            <div class="multi" id="ufMulti">
+              <button type="button" id="uf" class="multi-btn" aria-haspopup="true" aria-expanded="false" aria-controls="ufPanel">Todos</button>
+              <div id="ufPanel" class="multi-panel" role="group" aria-labelledby="ufLabel" hidden>
+                <div class="multi-tools">
+                  <button type="button" class="btn small" id="ufAll">Selecionar todos</button>
+                  <button type="button" class="btn small" id="ufNone">Limpar</button>
+                </div>
+                <div id="ufGroups"></div>
+              </div>
+            </div>
           </div>
           <div class="field">
             <label for="city">Município</label>
@@ -64,31 +80,37 @@
             </div>
           </div>
         </div>
+        <small id="ufHint" class="hint">Marque uma ou mais regiões para selecionar todos os seus estados, ou escolha estados avulsos. Com vários estados, a pesquisa percorre um estado por vez.</small>
       </fieldset>
 
       <fieldset class="group">
         <legend>Características empresariais</legend>
         <div class="grid">
           <div class="field">
-            <label for="status">Situação cadastral</label>
-            <select id="status">
-              <option value="">Todas</option>
-              <option value="ATIVA">Ativa</option>
-              <option value="SUSPENSA">Suspensa</option>
-              <option value="INAPTA">Inapta</option>
-              <option value="BAIXADA">Baixada</option>
-              <option value="NULA">Nula</option>
-            </select>
+            <label id="statusLabel" for="status">Situação cadastral</label>
+            <div class="multi" id="statusMulti">
+              <button type="button" id="status" class="multi-btn" aria-haspopup="true" aria-expanded="false" aria-controls="statusPanel">Todas</button>
+              <div id="statusPanel" class="multi-panel narrow" role="group" aria-labelledby="statusLabel" hidden>
+                <div class="multi-tools">
+                  <button type="button" class="btn small" id="statusAll">Selecionar todas</button>
+                  <button type="button" class="btn small" id="statusNone">Limpar</button>
+                </div>
+                <div id="statusList"></div>
+              </div>
+            </div>
           </div>
           <div class="field">
-            <label for="size">Porte da empresa</label>
-            <select id="size" aria-describedby="sizeHint">
-              <option value="">Todos</option>
-              <option value="1">Microempresa</option>
-              <option value="3">Empresa de pequeno porte</option>
-              <option value="5">Demais</option>
-              <option value="0">Não informado</option>
-            </select>
+            <label id="sizeLabel" for="size">Porte da empresa</label>
+            <div class="multi" id="sizeMulti">
+              <button type="button" id="size" class="multi-btn" aria-haspopup="true" aria-expanded="false" aria-controls="sizePanel" aria-describedby="sizeHint">Todos</button>
+              <div id="sizePanel" class="multi-panel narrow" role="group" aria-labelledby="sizeLabel" hidden>
+                <div class="multi-tools">
+                  <button type="button" class="btn small" id="sizeAll">Selecionar todos</button>
+                  <button type="button" class="btn small" id="sizeNone">Limpar</button>
+                </div>
+                <div id="sizeList"></div>
+              </div>
+            </div>
           </div>
           <div class="field">
             <label for="nature">Natureza jurídica</label>
@@ -110,11 +132,16 @@
           </div>
         </div>
         <p id="sizeInfo" class="size-info" role="status" aria-live="polite" hidden></p>
-        <small id="sizeHint" class="hint">A API não filtra por porte: esse filtro é aplicado no navegador sobre os resultados, e por isso exige outro filtro além dele.</small>
+        <small id="sizeHint" class="hint">O porte é filtrado no navegador sobre os resultados (a API não oferece esse filtro), por isso exige outro filtro além dele. Marcar todas as opções equivale a não filtrar. Com várias situações ou estados, a pesquisa faz uma consulta por combinação (máximo de 40).</small>
       </fieldset>
     </div>
 
     <p id="formError" class="form-error" role="alert" hidden></p>
+
+    <div class="form-actions">
+      <button type="button" id="clear" class="btn">Limpar filtros</button>
+      <button type="submit" id="submit" class="btn primary">Pesquisar</button>
+    </div>
   </form>
 
   <nav class="tabs" role="tablist" aria-label="Visões">
@@ -129,6 +156,14 @@
       <div class="toolbar">
         <div id="count" class="count" role="status" aria-live="polite">Defina os filtros e clique em Pesquisar.</div>
         <div class="tb-actions">
+          <label class="tb-filter" id="contactFilter" for="contactSel" hidden>Contato
+            <select id="contactSel" title="A API não filtra por contato: o filtro é aplicado no navegador sobre os resultados">
+              <option value="">Todos</option>
+              <option value="any">Com algum contato</option>
+              <option value="email">Com e-mail</option>
+              <option value="phone">Com telefone</option>
+            </select>
+          </label>
           <button type="button" id="exportBtn" class="btn small" hidden title="Baixa os resultados da pesquisa em CSV (até 2.000 linhas), com telefone e e-mail">⬇ Exportar CSV</button>
           <button type="button" id="countBtn" class="btn small" hidden title="A API não informa totais; o app conta percorrendo as páginas, até 2.000 resultados">Contar total</button>
           <button type="button" id="refresh" class="btn small" hidden>Atualizar pesquisa</button>
@@ -144,8 +179,8 @@
           <caption class="sr">Empresas encontradas</caption>
           <thead>
             <tr>
-              <th scope="col" class="c-name">Razão social</th>
-              <th scope="col" class="c-trade">Nome fantasia</th>
+              <th scope="col" class="c-name" aria-sort="none"><button type="button" class="th-sort" data-sort="legal" title="Ordenar de A a Z (apenas os resultados desta página)">Razão social <span class="sort-ind" aria-hidden="true">↕</span></button></th>
+              <th scope="col" class="c-trade" aria-sort="none"><button type="button" class="th-sort" data-sort="trade" title="Ordenar de A a Z (apenas os resultados desta página)">Nome fantasia <span class="sort-ind" aria-hidden="true">↕</span></button></th>
               <th scope="col" class="c-cnpj">CNPJ</th>
               <th scope="col" class="c-type">Tipo</th>
               <th scope="col" class="c-size">Porte</th>

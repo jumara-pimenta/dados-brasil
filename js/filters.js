@@ -10,18 +10,138 @@
 
   const fail = (field, message) => ({ ok: false, field, message });
 
-  function fillRegions() {
-    Object.keys(DB.REGIONS).forEach(r => $('region').add(new Option(r, r)));
+  // ---------- Regiões e estados (checkboxes) ----------
+  // A API aceita uma UF por consulta; o app consulta cada UF marcada em sequência (ver app.js).
+  // Regiões e estados compartilham a mesma seleção: marcar uma região marca todos os seus estados,
+  // e uma região aparece marcada quando todos os seus estados estão marcados.
+  let selectedUfs = new Set();
+  const ufList = () => states.map(s => s.uf).filter(uf => selectedUfs.has(uf));   // ordem alfabética por nome
+  const regionNames = () => Object.keys(DB.REGIONS);
+  const regionCount = r => DB.REGIONS[r].filter(u => selectedUfs.has(u)).length;
+  const fullRegions = () => regionNames().filter(r => regionCount(r) === DB.REGIONS[r].length);
+
+  // Abre/fecha um painel de checkboxes: clique fora, Esc e saída do foco fecham.
+  function dropdown(btnId, panelId, boxId) {
+    const btn = $(btnId), panel = $(panelId), box = $(boxId);
+    const set = open => { panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
+    btn.addEventListener('click', () => set(panel.hidden));
+    document.addEventListener('click', ev => { if (!box.contains(ev.target)) set(false); });
+    document.addEventListener('focusin', ev => { if (!box.contains(ev.target)) set(false); });
+    box.addEventListener('keydown', ev => {
+      if (ev.key === 'Escape' && !panel.hidden) { ev.preventDefault(); set(false); btn.focus(); }
+    });
+    return { set };
+  }
+  const drops = {};   // region, uf
+  const multis = {};  // status, size
+
+  // Lista de checkboxes em dropdown (situação cadastral, porte). Marcar todas equivale a não filtrar.
+  function createMultiCheck(cfg) {
+    const btn = $(cfg.id), list = $(cfg.id + 'List');
+    let selected = new Set();
+    const drop = dropdown(cfg.id, cfg.id + 'Panel', cfg.id + 'Multi');
+    list.innerHTML = cfg.options.map(o =>
+      `<label class="chk"><input type="checkbox" value="${F.esc(o.value)}"> ${F.esc(o.label)}</label>`).join('');
+    const values = () => cfg.options.map(o => o.value).filter(v => selected.has(v));
+    function sync() {
+      list.querySelectorAll('input').forEach(cb => { cb.checked = selected.has(cb.value); });
+      const labels = cfg.options.filter(o => selected.has(o.value)).map(o => o.label);
+      btn.textContent = !labels.length ? cfg.emptyLabel
+        : labels.length === cfg.options.length ? cfg.allLabel
+        : labels.length <= cfg.maxNames ? labels.join(', ') : `${labels.length} ${cfg.plural}`;
+      btn.title = labels.join(', ');
+      btn.classList.toggle('has', labels.length > 0);
+      cfg.onChange?.();
+    }
+    list.addEventListener('change', ev => {
+      const cb = ev.target;
+      if (cb.checked) selected.add(cb.value); else selected.delete(cb.value);
+      sync();
+    });
+    $(cfg.id + 'All').addEventListener('click', () => { selected = new Set(cfg.options.map(o => o.value)); sync(); });
+    $(cfg.id + 'None').addEventListener('click', () => { selected.clear(); sync(); });
+    sync();
+    return {
+      values,
+      // todas marcadas = sem filtro (evita consultas desnecessárias)
+      effective: () => (values().length === cfg.options.length ? [] : values()),
+      clear() { selected.clear(); sync(); drop.set(false); },
+    };
   }
 
-  // A região apenas restringe os estados disponíveis.
-  function fillUfs() {
-    const region = $('region').value, current = $('uf').value;
-    $('uf').length = 1;
-    states
-      .filter(s => !region || DB.REGIONS[region].includes(s.uf))
-      .forEach(s => $('uf').add(new Option(`${s.name} (${s.uf})`, s.uf)));
-    if ([...$('uf').options].some(o => o.value === current)) $('uf').value = current;
+  function buildPanels() {
+    $('regionList').innerHTML = regionNames().map(r =>
+      `<label class="chk"><input type="checkbox" data-region="${F.esc(r)}"> <strong>${F.esc(r)}</strong> <span class="mute">(${DB.REGIONS[r].length} estados)</span></label>`).join('');
+    $('ufGroups').innerHTML = Object.entries(DB.REGIONS).map(([region, ufs]) => {
+      const list = ufs.map(uf => states.find(s => s.uf === uf)).filter(Boolean)
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+      return `<fieldset class="multi-region"><legend><label class="chk"><input type="checkbox" data-region="${F.esc(region)}"> <strong>${F.esc(region)}</strong></label></legend>
+        <div class="multi-states">${list.map(s =>
+          `<label class="chk"><input type="checkbox" value="${s.uf}"> ${F.esc(s.name)} <span class="mute">(${s.uf})</span></label>`).join('')}</div></fieldset>`;
+    }).join('');
+  }
+
+  function syncUfs() {
+    const list = ufList();
+    document.querySelectorAll('#ufGroups input[value]').forEach(cb => { cb.checked = selectedUfs.has(cb.value); });
+    // caixas das regiões (nos dois painéis): marcada, parcial (indeterminada) ou vazia
+    document.querySelectorAll('input[data-region]').forEach(cb => {
+      const n = regionCount(cb.dataset.region), total = DB.REGIONS[cb.dataset.region].length;
+      cb.checked = n === total;
+      cb.indeterminate = n > 0 && n < total;
+    });
+    $('uf').textContent = !list.length ? 'Todos'
+      : list.length === states.length ? `Todos os ${states.length} estados`
+      : list.length <= 2 ? list.map(uf => states.find(s => s.uf === uf).name).join(', ')
+      : `${list.length} estados`;
+    $('uf').classList.toggle('has', list.length > 0);
+
+    const full = fullRegions();
+    const extra = list.length - full.reduce((n, r) => n + DB.REGIONS[r].length, 0);   // estados fora de regiões completas
+    $('region').textContent = !list.length ? 'Todas'
+      : !full.length ? 'Seleção por estados'
+      : (full.length <= 2 ? full.join(', ') : `${full.length} regiões`) + (extra ? ` + ${extra} estado${extra > 1 ? 's' : ''}` : '');
+    $('region').classList.toggle('has', list.length > 0);
+  }
+
+  // O município escolhido só vale se for do único estado selecionado.
+  function onUfChange() {
+    const pk = combos.city.pick, l = ufList();
+    if (pk && !(l.length === 1 && l[0] === pk.state?.uf)) combos.city.clear();
+    else if (!pk) combos.city.reset();
+  }
+
+  function setUfs(list, { silent = false } = {}) {
+    selectedUfs = new Set(list);
+    syncUfs();
+    if (!silent) onUfChange();
+  }
+
+  // Caixa de região marcada/desmarcada: aplica a todos os estados dela.
+  function applyRegionToggle(cb) {
+    DB.REGIONS[cb.dataset.region].forEach(uf => (cb.checked ? selectedUfs.add(uf) : selectedUfs.delete(uf)));
+    syncUfs();
+    onUfChange();
+  }
+
+  function bindPickers() {
+    buildPanels();
+    syncUfs();
+    drops.region = dropdown('region', 'regionPanel', 'regionMulti');
+    drops.uf = dropdown('uf', 'ufPanel', 'ufMulti');
+
+    $('regionPanel').addEventListener('change', ev => { if (ev.target.dataset.region) applyRegionToggle(ev.target); });
+    $('ufPanel').addEventListener('change', ev => {
+      const cb = ev.target;
+      if (cb.dataset.region) return applyRegionToggle(cb);
+      if (cb.value) (cb.checked ? selectedUfs.add(cb.value) : selectedUfs.delete(cb.value));
+      syncUfs();
+      onUfChange();
+    });
+    $('ufAll').addEventListener('click', () => setUfs(states.map(s => s.uf)));
+    $('ufNone').addEventListener('click', () => setUfs([]));
+    $('regionAll').addEventListener('click', () => setUfs(states.map(s => s.uf)));
+    $('regionNone').addEventListener('click', () => setUfs([]));
   }
 
   // ---------- Combobox genérico (acessível, com teclado) ----------
@@ -190,12 +310,12 @@
 
   async function searchCity(raw, { signal }) {
     const q = F.norm(raw).trim();
-    const uf = $('uf').value;
+    const ufs = ufList();
     let found = [], after = null, hasNext = false;
-    // Com UF escolhida a API ainda devolve todos os estados: varre algumas páginas até achar o bastante.
-    for (let p = 0; p < (uf ? CITY_MAX_PAGES : 1); p++) {
+    // Com UF(s) escolhida(s) a API ainda devolve todos os estados: varre algumas páginas até achar o bastante.
+    for (let p = 0; p < (ufs.length ? CITY_MAX_PAGES : 1); p++) {
       const r = await api.searchCities(raw, { after, signal });
-      found = found.concat(uf ? r.items.filter(c => c.state?.uf === uf) : r.items);
+      found = found.concat(ufs.length ? r.items.filter(c => ufs.includes(c.state?.uf)) : r.items);
       after = r.endCursor;
       hasNext = r.hasNext;
       if (!hasNext || found.length >= CITY_SHOWN) break;
@@ -249,28 +369,18 @@
     states = [...refs.states].sort((a, b) => a.name.localeCompare(b.name, 'pt'));
     const cnaes = refs.cnaes.map(c => ({ ...c, _n: F.norm(c.description) }));
     const natures = refs.legalNatures.map(n => ({ ...n, _n: F.norm(n.description) }));
-    fillRegions();
-    fillUfs();
-
     combos.city = createCombo({
       id: 'city', minChars: 2, maxShown: CITY_SHOWN, async: true,
       search: searchCity,
       label: cityLabel,
       optionHtml: (c, q) => `<span class="opt-desc">${highlight(c.name, q)}</span><span class="uf-tag">${F.esc(c.state?.uf || '')}</span>`,
-      emptyText: () => ($('uf').value ? `Nenhum município encontrado em ${$('uf').value}.` : 'Nenhum município encontrado.'),
+      emptyText: () => { const u = ufList(); return u.length ? `Nenhum município encontrado em ${u.join(', ')}.` : 'Nenhum município encontrado.'; },
       byText: (text, items) => {
         const exact = items.filter(c => F.norm(cityLabel(c)) === F.norm(text) || F.norm(c.name) === F.norm(text));
         return exact.length === 1 ? exact[0] : null;
       },
       // Ao escolher um município, preenche o estado (e a região) correspondente.
-      onPick: c => {
-        const uf = c.state?.uf || '';
-        if (uf && $('uf').value !== uf) {
-          $('region').value = F.regionOf(uf);
-          fillUfs();
-          $('uf').value = uf;
-        }
-      },
+      onPick: c => { if (c.state?.uf) setUfs([c.state.uf], { silent: true }); },
     });
 
     combos.nature = createCombo({
@@ -290,14 +400,17 @@
     });
 
     bindCnpjMask();
-    $('region').addEventListener('change', fillUfs);
-    $('uf').addEventListener('change', () => {
-      // O município escolhido deixa de valer se pertencer a outro estado.
-      const pk = combos.city.pick;
-      if (pk && $('uf').value && pk.state?.uf !== $('uf').value) combos.city.clear();
-      else if (!pk) combos.city.reset();
+    bindPickers();
+    multis.status = createMultiCheck({
+      id: 'status', emptyLabel: 'Todas', allLabel: 'Todas as situações', plural: 'situações', maxNames: 2,
+      options: ['ATIVA', 'SUSPENSA', 'INAPTA', 'BAIXADA'].map(   // a API não aceita filtrar por NULA
+        v => ({ value: v, label: DB.STATUS_LABELS[v] })),
     });
-    $('size').addEventListener('change', showSizeInfo);
+    multis.size = createMultiCheck({
+      id: 'size', emptyLabel: 'Todos', allLabel: 'Todos os portes', plural: 'portes', maxNames: 1,
+      options: [1, 3, 5, 0].map(v => ({ value: String(v), label: DB.SIZE_LABELS[v] })),
+      onChange: showSizeInfo,
+    });
   }
 
   function bindCnpjMask() {
@@ -310,12 +423,12 @@
     });
   }
 
-  // Explica o porte escolhido logo abaixo do filtro.
+  // Explica cada porte marcado logo abaixo do filtro.
   function showSizeInfo() {
-    const v = $('size').value;
     const el = $('sizeInfo');
-    el.textContent = v === '' ? '' : `${DB.SIZE_LABELS[+v]}: ${DB.SIZE_HINTS[+v]}`;
-    el.hidden = v === '';
+    const vals = (multis.size?.values() || []).map(Number);
+    el.innerHTML = vals.map(v => `<strong>${F.esc(DB.SIZE_LABELS[v])}:</strong> ${F.esc(DB.SIZE_HINTS[v])}`).join('<br>');
+    el.hidden = !vals.length;
   }
 
   function collect() {
@@ -336,27 +449,26 @@
       }
     }
 
-    const region = $('region').value;
-    let uf = $('uf').value;
-    if (region && !uf) {
-      return fail('uf', 'Escolha um estado da região selecionada: a API filtra por estado, não por região.');
-    }
-
     const city = combos.city.resolve();
     if (city.error) return fail('city', 'Escolha um município da lista de sugestões (digite o nome e selecione).');
     if (city.item) {
       filter.cityId = city.item.id;
-      if (!uf) uf = city.item.state?.uf || '';
       chips.push(['Município', cityLabel(city.item)]);
     }
-    if (uf) {
-      filter.uf = uf;
-      chips.push(['UF', uf]);
-      if (region) chips.unshift(['Região', region]);
+
+    // Estados marcados (o município escolhido já restringe a seleção ao seu estado).
+    let ufs = ufList();
+    if (city.item && !ufs.length && city.item.state?.uf) ufs = [city.item.state.uf];
+    if (ufs.length) {
+      const full = fullRegions();
+      const fullCount = full.reduce((n, r) => n + DB.REGIONS[r].length, 0);
+      chips.unshift(full.length && fullCount === ufs.length
+        ? ['Região', `${full.join(', ')} (${ufs.length} estados)`]
+        : ['UF', ufs.length > 6 ? `${ufs.length} estados: ${ufs.join(', ')}` : ufs.join(', ')]);
     }
 
-    const status = $('status').value;
-    if (status) { filter.status = status; chips.push(['Situação', F.statusLabel(status)]); }
+    const statuses = multis.status.effective();
+    if (statuses.length) chips.push(['Situação', statuses.map(F.statusLabel).join(', ')]);
 
     const nat = combos.nature.resolve();
     if (nat.error) return fail('nature', 'Natureza jurídica: escolha uma das sugestões da lista.');
@@ -366,19 +478,35 @@
     if (cn.error) return fail('cnae', 'Atividade (CNAE): escolha uma das sugestões da lista.');
     if (cn.item) { filter.cnae = cn.item.id; chips.push(['CNAE', codeLabel(cn.item)]); }
 
-    if (!Object.keys(filter).length) {
+    if (!Object.keys(filter).length && !ufs.length && !statuses.length) {
       return fail('q', 'Informe ao menos um filtro (nome ou CNPJ, estado, município, situação, natureza jurídica ou CNAE). O porte sozinho não basta, pois é aplicado no navegador.');
     }
 
-    const size = $('size').value;
-    if (size !== '') chips.push(['Porte', DB.SIZE_LABELS[+size]]);
+    const sizeSel = multis.size.effective().map(Number);
+    if (sizeSel.length) chips.push(['Porte', sizeSel.map(v => DB.SIZE_LABELS[v]).join(', ')]);
 
-    return { ok: true, filter, size: size === '' ? null : size, chips };
+    // A API aceita um valor de UF e um de situação por consulta: uma consulta por combinação.
+    const n = (ufs.length || 1) * (statuses.length || 1);
+    if (n > config.MAX_COMBINATIONS) {
+      return fail(ufs.length > 1 ? 'uf' : 'status',
+        `Combinações demais: ${ufs.length || 1} estado(s) × ${statuses.length || 1} situação(ões) = ${n} consultas (máximo ${config.MAX_COMBINATIONS}). Reduza a seleção de estados ou de situações.`);
+    }
+    const filters = [];
+    for (const uf of ufs.length ? ufs : [null]) {
+      for (const st of statuses.length ? statuses : [null]) {
+        filters.push({ ...filter, ...(uf && { uf }), ...(st && { status: st }) });
+      }
+    }
+    return { ok: true, filters, sizes: sizeSel.length ? sizeSel : null, chips };
   }
 
   function clear() {
     $('filters').reset();
-    fillUfs();
+    setUfs([], { silent: true });
+    drops.uf?.set(false);
+    drops.region?.set(false);
+    multis.status?.clear();
+    multis.size?.clear();
     Object.values(combos).forEach(c => c.clear());
     showSizeInfo();
   }

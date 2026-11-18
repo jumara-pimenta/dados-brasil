@@ -42,6 +42,17 @@
     return m ? `(${m[1]}) ${m[2]}-${m[3]}` : String(p ?? '');
   };
 
+  // A base traz "(0000) 00000000" quando não há telefone: telefones só com zeros ou curtos demais não valem.
+  F.validPhones = phones => (phones || []).filter(p => {
+    const d = F.digits(p);
+    return d.length >= 8 && !/^0+$/.test(d);
+  });
+
+  F.validEmail = e => {
+    const s = String(e ?? '').trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? s : '';
+  };
+
   F.sizeLabel = code => {
     if (code == null || code === '') return '';
     return DB.SIZE_LABELS[+code] ?? '';

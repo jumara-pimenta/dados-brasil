@@ -10,6 +10,7 @@
     SOURCE_URL: 'https://dadosbrasil.net/pt/',
     PAGE_SIZE: 50,            // resultados por página (o máximo da API é 100)
     API_MAX_PAGE: 100,
+    MAX_COMBINATIONS: 40,     // máx. de consultas (estados × situações) por pesquisa
     EXPORT_MAX_PAGES: 20,     // "Exportar CSV" baixa no máx. 20 páginas de 100 (= 2.000 linhas)
     COUNT_MAX_PAGES: 20,     // "Contar total" varre no máx. 20 páginas de 100 (= 2.000 resultados)
     SIZE_SCAN_PAGES: 5,      // máx. de páginas da API varridas por página exibida ao filtrar por porte
