@@ -266,3 +266,7 @@ input[type=checkbox]{width:16px;height:16px;margin:0;padding:0;accent-color:var(
 .sort-ind{font-size:11px;color:var(--mute);opacity:.7}
 th[aria-sort=ascending] .sort-ind,th[aria-sort=descending] .sort-ind{color:var(--blue);opacity:1;font-weight:700}
 th[aria-sort=ascending],th[aria-sort=descending]{color:var(--blue-d)}
+
+/* Rodapé dos painéis de checkboxes: botão Aplicar */
+.multi-foot{position:sticky;bottom:-10px;display:flex;justify-content:flex-end;margin:8px -10px -10px;padding:8px 10px 10px;background:#fff;border-top:1px solid var(--line);border-radius:0 0 10px 10px;z-index:1}
+.multi-foot .btn{min-width:110px}

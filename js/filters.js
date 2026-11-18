@@ -25,6 +25,8 @@
     const btn = $(btnId), panel = $(panelId), box = $(boxId);
     const set = open => { panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
     btn.addEventListener('click', () => set(panel.hidden));
+    // "Aplicar": confirma e fecha (a seleção já vale enquanto se marca; o botão só deixa isso explícito).
+    panel.querySelector('[data-close]')?.addEventListener('click', () => { set(false); btn.focus(); });
     document.addEventListener('click', ev => { if (!box.contains(ev.target)) set(false); });
     document.addEventListener('focusin', ev => { if (!box.contains(ev.target)) set(false); });
     box.addEventListener('keydown', ev => {
